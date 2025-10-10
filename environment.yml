@@ -1,0 +1,4 @@
+name: edata
+channels:
+  - defaults
+prefix: C:\Users\Stefanopoulos\.conda\envs\edata
