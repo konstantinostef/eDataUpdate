@@ -4,6 +4,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
+import logging
 import sys
 
 def read_settings(settings_file_path):
@@ -20,7 +21,7 @@ def read_settings(settings_file_path):
     username = df.iloc[0, 1].strip()
     password = df.iloc[1, 1].strip()
     #print(f"Username: {username}, Password: {password}")
-    date = df.iloc[2, 1].strip()
+    date = "1" #df.iloc[2, 1].strip()
     #print(f"Date: {date}")
     #sys.exit()
     return username, password, date
@@ -124,6 +125,7 @@ def loginToEdata(driver, username, password):
         time.sleep(3)
 
     except Exception as e:
+        logging.error(e)
         print(f"Error connecting to the website: {e}")
         driver.quit()
     return

@@ -1,5 +1,6 @@
 import pandas as pd
 import logging
+import traceback
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
@@ -54,6 +55,10 @@ def process_am_code(driver, am_code, mk):
         driver: Selenium WebDriver instance
         am_code: 6-digit AM code to process
     """
+    
+    if(pd.isna(am_code) or pd.isna(mk)):
+        logging.warning(f"Skipping invalid entry: AM code: {am_code}, MK: {mk}")
+        return
     try:
         print(f"Processing AM code: {am_code}")
         
@@ -91,7 +96,7 @@ def process_am_code(driver, am_code, mk):
         time.sleep(2)
 
         mk_value_for_dropdown =  mk_to_value(mk)  # Implement this function to map am_code to dropdown value
-        print(f"MK: {mk}, MK value for dropdown: {mk_value_for_dropdown}")
+        # print(f"MK: {mk}, MK value for dropdown: {mk_value_for_dropdown}")
         wait = WebDriverWait(driver, 10)
         dropdown_element = wait.until(EC.presence_of_element_located((By.ID, "ctl00_ContentMain_dxtabWorker_ddlSalaryCategory")))
 
@@ -102,10 +107,9 @@ def process_am_code(driver, am_code, mk):
         selected_option = dropdown.first_selected_option
         selected_mk_value = selected_option.text.split(" ")[1]
 
-        print(f"Selected: {selected_option.text[-1]} (Value: {selected_option.text})")
         # Verify the selection was made
         selected_option = dropdown.first_selected_option
-        print(f"Selected: {selected_option.text} (Value: {selected_option.get_attribute('value')})")
+        print(f"selected: {selected_option.text} (Value: {selected_option.get_attribute('value')})")
         # Wait for the page to load
         time.sleep(2)        
 
@@ -115,13 +119,13 @@ def process_am_code(driver, am_code, mk):
         if(selected_mk_value != str(mk)):
             logger.error('AM %s: MK value not updated correctly. Expected %s but got %s', am_code, mk, selected_mk_value)
         else:
-            logger.info('AM %s: MK value updated correctly. Expected %s and got %s', am_code, mk, selected_mk_value)
-            # button.click()
-        time.sleep(4)  # Small delay between requests
-        print(f"Completed processing: {am_code}")
+            # logger.info('AM %s: MK value updated correctly. Expected %s and got %s', am_code, mk, selected_mk_value)
+            button.click()
+        time.sleep(6)  # Small delay between requests
+        logger.info(f"Completed processing: {am_code}")
         
     except Exception as e:
-        print(f"Error processing {am_code}: {e}")
+        logger.error(f"Error processing {am_code}: {traceback.format_exc()}")
 
 def main():
     """Main execution function"""
@@ -134,6 +138,7 @@ def main():
     # Configuration
     excel_file = "mk_am_codes.xlsx"  # Change to your file path
     settings_file = "settings.xlsx"  # Change to your settings file path
+    
     username, password, date = read_settings(settings_file)
     
     # Initialize the web driver
@@ -144,7 +149,7 @@ def main():
     # driver = webdriver.Firefox()
     
     loginToEdata(driver, username, password)
-
+    
     try:
         # Process each AM code
         for am_code, mk in read_mk_am_codes(excel_file):
