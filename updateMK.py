@@ -102,7 +102,7 @@ def process_am_code(driver, am_code, mk):
         selected_option = dropdown.first_selected_option
         selected_mk_value = selected_option.text.split(" ")[1]
 
-        print(f"Selected: {selected_option.text[-1]} (Value: {selected_option.text})")
+        print(f"Selected: {selected_mk_value} (Value: {selected_option.text})")
         # Verify the selection was made
         selected_option = dropdown.first_selected_option
         print(f"Selected: {selected_option.text} (Value: {selected_option.get_attribute('value')})")
