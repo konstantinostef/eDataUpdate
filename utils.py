@@ -21,7 +21,7 @@ def read_settings(settings_file_path):
     username = df.iloc[0, 1].strip()
     password = df.iloc[1, 1].strip()
     #print(f"Username: {username}, Password: {password}")
-    date = "1" #df.iloc[2, 1].strip()
+    date = df.iloc[2, 1].strftime('%d/%m/%Y')
     #print(f"Date: {date}")
     #sys.exit()
     return username, password, date

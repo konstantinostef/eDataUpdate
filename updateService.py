@@ -5,7 +5,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from utils import read_settings, read_am_codes, loginToEdata
 
-
 import time
 import sys
 
@@ -93,8 +92,8 @@ def main():
     """Main execution function"""
     
     # Configuration
-    excel_file = "am_codes.xlsx"  # Change to your file path
-    settings_file = "settings.xlsx"  # Change to your settings file path
+    excel_file = "files/am_codes_to_update_service.xlsx"
+    settings_file = "files/settings.xlsx"
     username, password, date = read_settings(settings_file)
     # Read AM codes from Excel
     am_codes = read_am_codes(excel_file)

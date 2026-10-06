@@ -301,15 +301,18 @@ def generate_sql(results, output_file="teachers_insert.sql", school_mapping=None
             f"`active`, `sent_link_mail`, `is_director`, `is_subdirector`) VALUES ("
             f"'{md5}', '{now}', '{now}', '{name}', '{surname}', '', '', "
             f"'{afm}', '', '{mobile}', '{email}', NULL, '{klados}', '{am}', "
-            f"1, {org_eae}, {organiki_id_sql}, 'App\\Models\\School', "
-            f"1, 0, 0, 0) "
+            f"1, 0, 1, 'App\\\\Models\\\\NoSchool', "
+            # f"1, {org_eae}, {organiki_id_sql}, 'App\\Models\\School', "
+            f"1, 1, 0, 0) "
             f"ON DUPLICATE KEY UPDATE "
             f"`updated_at` = '{now}', `name` = '{name}', "
             f"`surname` = '{surname}', "
             f"`telephone` = '{mobile}', `mail` = '{email}', "
             f"`klados` = '{klados}', `am` = '{am}', "
-            f"`sxesi_ergasias_id` = 1, `org_eae` = {org_eae}, "
-            f"`organiki_id` = {organiki_id_sql}, `organiki_type` = 'App\\Models\\School', "
+            # f"`sxesi_ergasias_id` = 1, `org_eae` = {org_eae}, "
+            f"`sxesi_ergasias_id` = 1, `org_eae` = 1, "
+            # f"`organiki_id` = {organiki_id_sql}, `organiki_type` = 'App\\Models\\School', "
+            f"`organiki_id` = 1, `organiki_type` = 'App\\\\Models\\\\NoSchool', "
             f"`active` = 1, `is_director` = 0, `is_subdirector` = 0;"
         )
         lines.append(sql)
@@ -366,7 +369,7 @@ def run_scraper():
 
         if results:
             df = pd.DataFrame(results)
-            df.to_excel("/files/teacher_data.xlsx", index=False)
+            df.to_excel("./files/teacher_data.xlsx", index=False)
             print(f"Data saved to /files/teacher_data.xlsx ({len(results)} records)")
 
             school_mapping = _prompt_school_mapping()
@@ -396,20 +399,94 @@ def run_sql_from_xlsx():
     except Exception as e:
         print(f"Error: {e}")
 
+def run_update_organiki():
+    """
+    Reads an xlsx with columns [A/A, ΑΜ, Νέα Οργανική] and generates
+    SQL UPDATE statements that set organiki_id for each teacher by AM code.
+    """
+    xlsx_file   = input("Enter path to the transfers xlsx file (A/A, ΑΜ, Νέα Οργανική): ").strip()
+    output_file = input("Enter output SQL file name [update_organiki.sql]: ").strip()
+    if not output_file:
+        output_file = "update_organiki.sql"
+
+    # ── Load the transfers file ──────────────────────────────────────────────
+    df = pd.read_excel(xlsx_file, dtype=str)
+    df.fillna('', inplace=True)
+
+    required = {'ΑΜ', 'Νέα Οργανική'}
+    missing  = required - set(df.columns)
+    if missing:
+        print(f"Error: xlsx is missing required columns: {missing}")
+        return
+
+    rows = df[['ΑΜ', 'Νέα Οργανική']].values.tolist()
+    print(f"Loaded {len(rows)} rows from {xlsx_file}")
+
+    # ── Build school mapping ─────────────────────────────────────────────────
+    school_mapping = _prompt_school_mapping()
+    if school_mapping is None:
+        print("No school mapping provided — cannot resolve organiki_id. Aborting.")
+        return
+
+    # ── Generate UPDATE statements ───────────────────────────────────────────
+    now        = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    lines      = []
+    unresolved = []
+
+    for am, school_name in rows:
+        am          = am.strip()
+        school_name = school_name.strip()
+
+        if not am:
+            continue
+
+        organiki_id = school_mapping.get(school_name)
+
+        if organiki_id is None:
+            unresolved.append(f"  AM {am!r}: school {school_name!r}")
+            organiki_id_sql = 'NULL'
+        else:
+            organiki_id_sql = str(organiki_id)
+
+        sql = (
+            f"UPDATE `teachers` SET "
+            f"`organiki_id` = {organiki_id_sql}, "
+            f"`organiki_type` = 'App\\\\Models\\\\School', "
+            f"`updated_at` = '{now}' "
+            f"WHERE `am` = '{am}';"
+        )
+        lines.append(sql)
+
+    # ── Report unresolved schools ────────────────────────────────────────────
+    if unresolved:
+        print(f"\nWARNING: {len(unresolved)} row(s) could not be mapped to a school id "
+              f"(organiki_id set to NULL):")
+        for msg in unresolved:
+            print(msg)
+
+    # ── Write output ─────────────────────────────────────────────────────────
+    out_path = f"files/{output_file}"
+    with open(out_path, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(lines))
+
+    print(f"\nSQL file saved to {out_path} ({len(lines)} statements)")
+
 
 def main():
     print("Select mode:")
     print("  1 - Scrape data from eData")
     print("  2 - Generate SQL from existing Excel file")
-    choice = input("Enter 1 or 2: ").strip()
+    print("  3 - Generate UPDATE SQL from transfers xlsx (Νέα Οργανική)")
+    choice = input("Enter 1, 2 or 3: ").strip()
 
     if choice == '1':
         run_scraper()
     elif choice == '2':
         run_sql_from_xlsx()
+    elif choice == '3':
+        run_update_organiki()
     else:
         print("Invalid choice. Exiting.")
-
 
 if __name__ == "__main__":
     main()
